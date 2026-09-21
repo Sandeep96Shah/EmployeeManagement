@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -28,6 +30,18 @@ builder.Services
             )
         };
     });
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("LoginRateLimit", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 5;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 builder.Services.AddAuthorization();
 
@@ -56,13 +70,16 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
+app.UseRateLimiter();
+
 app.MapControllers();
 
 app.Run();
 
 
 // Add CQRS pattern
-// Add Authentication and Authorization
-// Testing
-// Logging
-// Generic middleware for logging
+// Add Authentication and Authorization - Done
+// CORS
+// Logging - Done
+// Rate limiter - Done
+// Security points

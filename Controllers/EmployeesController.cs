@@ -12,15 +12,18 @@ namespace EmployeeManagement.Controllers;
 public class EmployeesController : ControllerBase
 {
     private readonly IEmployeeService _employeeService;
+    private readonly ILogger<EmployeesController> _logger;
 
-    public EmployeesController(IEmployeeService employeeService)
+    public EmployeesController(IEmployeeService employeeService, ILogger<EmployeesController> logger)
     {
         _employeeService = employeeService;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<EmplyeeResponse>>> GetEmployees([FromQuery] EmployeeQuery query)
     {
+        _logger.LogInformation("Get apis is reached.");
         var employees = await _employeeService.GetEmployees(query);
         return Ok(employees);
     }
@@ -39,8 +42,10 @@ public class EmployeesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<string>> CreateEmployee(CreateEmployee employee)
     {
+        _logger.LogInformation("Reached at create api.");
         if (await _employeeService.CreateEmployee(employee))
         {
+            _logger.LogInformation("New Employee is created:{Name}", employee.Name);
             return StatusCode(201, new { Message = $"{employee.Name} created successfully." });
         }
         return BadRequest("Employee with the same email already exists.");

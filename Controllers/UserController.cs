@@ -1,6 +1,7 @@
 using EmployeeManagement.Models;
 using EmployeeManagement.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EmployeeManagement.Controllers;
 
@@ -25,6 +26,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginRateLimit")]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request)
     {

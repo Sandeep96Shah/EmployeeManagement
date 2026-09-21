@@ -155,3 +155,4 @@
 /Users/sandeepshah/Desktop/C#/EmployeeManagement/bin/Debug/net9.0/Pomelo.EntityFrameworkCore.MySql.dll
 /Users/sandeepshah/Desktop/C#/EmployeeManagement/bin/Debug/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
 /Users/sandeepshah/Desktop/C#/EmployeeManagement/bin/Debug/net9.0/BCrypt-Net-Next.dll
+/Users/sandeepshah/Desktop/C#/EmployeeManagement/obj/Debug/net9.0/EmployeeManagement.sourcelink.json

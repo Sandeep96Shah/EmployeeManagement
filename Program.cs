@@ -27,8 +27,27 @@ builder.Services
                 Encoding.UTF8.GetBytes(
                     builder.Configuration["Jwt:Key"]!
                 )
-            )
+            ),
+            ClockSkew = TimeSpan.Zero
         };
+        options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine(
+                $"JWT Authentication Failed: {context.Exception.Message}"
+            );
+
+            return Task.CompletedTask;
+        },
+
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("JWT Token Validated Successfully.");
+
+            return Task.CompletedTask;
+        }
+    };
     });
 
 builder.Services.AddRateLimiter(options =>
@@ -62,6 +81,9 @@ builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<
+    IRefreshTokenRepository,
+    RefreshTokenRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();

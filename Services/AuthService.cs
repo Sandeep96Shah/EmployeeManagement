@@ -6,6 +6,7 @@ using EmployeeManagement.Enums;
 using EmployeeManagement.Models;
 using EmployeeManagement.Repositories;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 
 namespace EmployeeManagement.Services;
 
@@ -13,12 +14,15 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
 
     public AuthService(
         IUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
         IConfiguration configuration)
     {
         _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
         _configuration = configuration;
     }
 
@@ -88,10 +92,25 @@ public class AuthService : IAuthService
         // 3. Generate JWT
         var token = GenerateToken(user);
 
+        var refreshToken = GenerateRefreshToken();
+
+        var refreshTokenEntity = new RefreshToken
+        {
+            TokenHash = HashRefreshToken(refreshToken),
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        await _refreshTokenRepository.CreateAsync(
+        refreshTokenEntity);
+
         // 4. Return DTO
         return new LoginResponse
         {
             Token = token,
+            RefreshToken = refreshToken,
             UserId = user.Id,
             Email = user.Email,
             Role = user.Role.ToString()
@@ -102,6 +121,7 @@ public class AuthService : IAuthService
     {
         var claims = new[]
         {
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(
                 ClaimTypes.NameIdentifier,
                 user.Id.ToString()
@@ -133,11 +153,92 @@ public class AuthService : IAuthService
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddMinutes(1),
             signingCredentials: credentials
         );
 
         return new JwtSecurityTokenHandler()
             .WriteToken(token);
+    }
+
+    private string GenerateRefreshToken()
+    {
+        var randomBytes = RandomNumberGenerator.GetBytes(64);
+
+        return Convert.ToBase64String(randomBytes);
+    }
+
+    private string HashRefreshToken(string token)
+    {
+        var bytes = SHA256.HashData(
+            Encoding.UTF8.GetBytes(token)
+        );
+
+        return Convert.ToBase64String(bytes);
+    }
+
+    public async Task<LoginResponse> RefreshTokenAsync(
+    RefreshTokenRequest request)
+    {
+        var tokenHash = HashRefreshToken(
+            request.RefreshToken
+        );
+
+        var storedToken = await _refreshTokenRepository
+            .GetByTokenHashAsync(tokenHash);
+
+        if (storedToken == null)
+        {
+            throw new Exception("Invalid refresh token.");
+        }
+
+        if (storedToken.IsRevoked)
+        {
+            throw new Exception("Refresh token has been revoked.");
+        }
+
+        if (storedToken.ExpiresAt <= DateTime.UtcNow)
+        {
+            throw new Exception("Refresh token has expired.");
+        }
+
+        var user = storedToken.User;
+
+        // Rotate refresh token
+        await _refreshTokenRepository.RevokeAsync(
+            storedToken);
+
+        return await CreateTokenResponseAsync(user);
+    }
+
+    private async Task<LoginResponse> CreateTokenResponseAsync(User user)
+    {
+        // Generate short-lived JWT access token
+        var accessToken = GenerateToken(user);
+
+        // Generate long-lived refresh token
+        var refreshToken = GenerateRefreshToken();
+
+        // Store only the hash in database
+        var refreshTokenEntity = new RefreshToken
+        {
+            TokenHash = HashRefreshToken(refreshToken),
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        await _refreshTokenRepository.CreateAsync(
+            refreshTokenEntity);
+
+        return new LoginResponse
+        {
+            Token = accessToken,
+            RefreshToken = refreshToken,
+            UserId = user.Id,
+            Email = user.Email,
+            Role = user.Role.ToString()
+        };
     }
 }

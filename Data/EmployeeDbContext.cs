@@ -16,4 +16,6 @@ public class EmployeeDbContext : DbContext
     public DbSet<Department> Departments { get; set; }
 
     public DbSet<User> Users { get; set; }
+
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 }

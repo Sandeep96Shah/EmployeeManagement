@@ -3,6 +3,7 @@ using EmployeeManagement.Models;
 using EmployeeManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EmployeeManagement.Exceptions;
 
 namespace EmployeeManagement.Controllers;
 
@@ -34,7 +35,8 @@ public class EmployeesController : ControllerBase
         var employee = await _employeeService.GetEmployeeById(id);
         if (employee == null)
         {
-            return NotFound();
+            // return NotFound();
+            throw new EmployeeNotFoundException($"Employee with ID {id} not found.");
         }
         return Ok(employee);
     }

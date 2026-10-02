@@ -7,7 +7,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using EmployeeManagement.GlobalExceptionHandler;
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -85,8 +87,12 @@ builder.Services.AddScoped<
     IRefreshTokenRepository,
     RefreshTokenRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+app.UseExceptionHandler();
+app.UseHttpsRedirection();
 
 app.UseAuthentication();
 
